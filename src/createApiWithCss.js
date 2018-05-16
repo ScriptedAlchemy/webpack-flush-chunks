@@ -114,6 +114,7 @@ export default (
 
     // 6) special goodness for dual-file import()
     cssHashRaw,
+    // no need for this in webpack 4, use mini-css-extract-plugin
     CssHash: () => (
       <script
         type='text/javascript'
@@ -122,6 +123,7 @@ export default (
         }}
       />
     ),
+    // its here but you dont really need it in webpack 4, use mini-css-extract-plugin
     cssHash: {
       toString: () =>
         `<script type='text/javascript'>window.__CSS_CHUNKS__= ${JSON.stringify(cssHashRaw)}</script>`
