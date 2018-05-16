@@ -109,7 +109,7 @@ yarn add --dev babel-plugin-universal-import extract-css-chunks-webpack-plugin
 
 ## How It Works
 
-*React Universal Component*, when used on the server, skips the *loading* phase and syncronously renders your contained component, while recording the ID of 
+*React Universal Component*, when used on the server, skips the *loading* phase and synchronously renders your contained component, while recording the ID of 
 its corresponding module. *React Universal Component* may be used multiple times and therefore may record multiple split points. `flushChunks/flushFiles` is then able 
 to determine the minimal set of chunks required to re-render those modules/components on the client. From there it outputs strings, arrays or React components 
 containing the precise javascript files (and CSS files) to embed in your HTML response. 
@@ -118,7 +118,7 @@ The result is a server-rendered response whose *"checksum"*
 matches the one generated on the client, so that another client render is not needed, and more importantly so that another request to the server for
 an additional chunk is not needed.
 
-For future imports performed on user navigation, the "dual-import" mechanism of `babel-plugin-universal-import` will request a stylesheet. To accomplish that, a hash of chunk names to stylsheets is provided so you can embed it in the page, similar to what webpack does with your js chunks in its bootstrap code.
+For future imports performed on user navigation, the "dual-import" mechanism of `babel-plugin-universal-import` will request a stylesheet. To accomplish that, a hash of chunk names to stylesheets is provided so you can embed it in the page, similar to what webpack does with your js chunks in its bootstrap code.
 
 Before we examine how to use `flushChunks/flushFiles`, let's take a look at the desired output. It's something like this:
 
@@ -143,7 +143,7 @@ Before we examine how to use `flushChunks/flushFiles`, let's take a look at the 
   <!-- after entry chunks -->
   <script type='text/javascript' src='/static/main.js'></script>
 
-  <!-- stylsheets that will be requested when import() is called -->
+  <!-- stylesheets that will be requested when import() is called, NOT NEEDED IF IMPLEMENTING WEBPACK 4 -->
   <script>
     window.__CSS_CHUNKS__ = {
       Foo: '/static/Foo.css',
@@ -287,6 +287,10 @@ Let's take a look at some examples:
 
 ## Webpack Configuration
 
+**Due to major changes to the Webapck chunking mechanisms released in Webpack 4, we have had to introduce breaking changes. Below you will find the needed integration steps for both Webpack variants**
+
+###Webpack 3:
+
 ***client:***
 ```js
 const ExtractCssChunks = require('extract-css-chunks-webpack-plugin')
@@ -358,6 +362,54 @@ plugins: [
   })
   ...
 ```
+##Webpack 4:
+
+The reason you are probably still reading here ;)
+
+Thanks *@slavab89* for the helpful comments
+
+Pretty much the CommonsChunkPlugin is replaced with webpack internal optimization, all we do is name a runtimeChunk, then create a vendor chunk, and finally split on initial chunks. 
+
+**NOTE: *mini-css-extract-plugin* will handle css chunk loading. It is not longer a requirement to state `window.__CSS_CHUNKS__` in your page**
+
+
+For the whole universal Webpack 4 implementation, follow these:
+- Use Version 3.x of: [react-universal-component](https://github.com/faceyspacey/react-universal-component)
+- Use Version 3.x of [babel-plugin-universal-import](https://github.com/faceyspacey/babel-plugin-universal-import)
+- Use [mini-css-extract-plugin](https://github.com/webpack-contrib/mini-css-extract-plugin) for css chunking
+
+***client:***
+
+```js
+
+optimization: {
+    runtimeChunk: {
+        name: 'bootstrap'
+    },
+    splitChunks: {
+        chunks: 'initial', // <-- The key to this
+        cacheGroups: {
+            vendors: {
+                test: /[\\/]node_modules[\\/]/,
+                name: 'vendor'
+            }
+        }
+    }
+}
+```
+
+***server:***  
+
+The server is pretty much unchanged, so you use the same thing here:
+
+```js
+plugins:[
+    new webpack.optimize.LimitChunkCountPlugin({
+        maxChunks: 1
+    })
+]
+```
+
 
 - The `LimitChunkCountPlugin` with `maxChunks: 1` insures only one file is generated for your server bundle
 so it can be run synchronously.
@@ -425,7 +477,7 @@ We use [commitizen](https://github.com/commitizen/cz-cli), so run `npm run cm` t
 
 Reviewing a package's tests are a great way to get familiar with it. It's direct insight into the capabilities of the given package (if the tests are thorough). What's even better is a screenshot of the tests neatly organized and grouped (you know the whole "a picture says a thousand words" thing). 
 
-Below is a screenshot of this module's tests running in [Wallaby](https://wallabyjs.com) *("An Integrated Continuous Testing Tool for JavaScript")* which everyone in the React community should be using. It's fantastic and has taken my entire workflow to the next level. It re-runs your tests on every change along with comprehensive logging, bi-directional linking to your IDE, in-line code coverage indicators, **and even snapshot comparisons + updates for Jest!** I requestsed that feature by the way :). It's basically a substitute for live-coding that inspires you to test along your journey.
+Below is a screenshot of this module's tests running in [Wallaby](https://wallabyjs.com) *("An Integrated Continuous Testing Tool for JavaScript")* which everyone in the React community should be using. It's fantastic and has taken my entire workflow to the next level. It re-runs your tests on every change along with comprehensive logging, bi-directional linking to your IDE, in-line code coverage indicators, **and even snapshot comparisons + updates for Jest!** I requested that feature by the way :). It's basically a substitute for live-coding that inspires you to test along your journey.
 
 ![webpack-flush-chunks wallaby tests screenshot](./tests-screenshot.png)
 
